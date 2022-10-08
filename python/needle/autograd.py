@@ -1,7 +1,9 @@
 """Core data structures."""
+from enum import Enum
+
 import needle
-from typing import List, Optional, NamedTuple, Tuple, Union
-from collections import namedtuple
+from typing import List, Optional, NamedTuple, Tuple, Union, Dict
+from collections import namedtuple, defaultdict
 import numpy
 
 # needle version
@@ -401,6 +403,11 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     raise NotImplementedError()
     ### END YOUR SOLUTION
 
+class DFSMark(int, Enum):
+    NOT_VISITED = 0
+    IN_PROGRESS = 1
+    VISITED = 2
+
 
 def find_topo_sort(node_list: List[Value]) -> List[Value]:
     """Given a list of nodes, return a topological sort list of nodes ending in them.
@@ -410,16 +417,29 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     after all its predecessors are traversed due to post-order DFS, we get a topological
     sort.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    topo_order: List[Value] = []
+    visited: Dict[Value, DFSMark] = defaultdict(lambda: DFSMark.NOT_VISITED)
+    for node in node_list:
+        if visited[node] != DFSMark.VISITED:
+            topo_sort_dfs(node, visited, topo_order)
+
+    return topo_order
 
 
-def topo_sort_dfs(node, visited, topo_order):
+def topo_sort_dfs(node: Value, visited: Dict[Value, DFSMark], topo_order: List[Value]):
     """Post-order DFS"""
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    if visited[node] == DFSMark.VISITED:
+        return
+    if visited[node] == DFSMark.IN_PROGRESS:
+        raise ValueError("Nodes doesn't represent DAG")
+
+    visited[node] = DFSMark.IN_PROGRESS
+
+    for child in node.inputs:
+        topo_sort_dfs(child, visited, topo_order)
+
+    visited[node] = DFSMark.VISITED
+    topo_order.append(node)
 
 
 ##############################
