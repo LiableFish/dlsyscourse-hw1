@@ -88,10 +88,20 @@ def softmax_loss(Z: ndl.Tensor, y_one_hot: ndl.Tensor):
     ) / batch_size
 
 
-def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
+def _onehot(y: np.ndarray, number_of_classes: int) -> np.ndarray:
+    return np.identity(number_of_classes)[y]
+
+def nn_epoch(
+    X: np.ndarray,
+    y: np.ndarray,
+    W1: ndl.Tensor,
+    W2: ndl.Tensor,
+    lr: float = 0.1,
+    batch: int = 100,
+):
     """ Run a single epoch of SGD for a two-layer neural network defined by the
     weights W1 and W2 (with no bias terms):
-        logits = ReLU(X * W1) * W1
+        logits = ReLU(X * W1) * W2
     The function should use the step size lr, and the specified batch size (and
     again, without randomizing the order of X).
 
@@ -111,10 +121,19 @@ def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
             W1: ndl.Tensor[np.float32]
             W2: ndl.Tensor[np.float32]
     """
+    y_onehot = _onehot(y, number_of_classes=W2.shape[1])
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    for start in range(0, X.shape[0], batch):
+        X_batch = ndl.Tensor(X[start:start + batch])
+        y_batch = ndl.Tensor(y_onehot[start:start + batch], required_grad=False)
+        logits = ndl.ops.relu(X_batch @ W1) @ W2
+        loss = softmax_loss(logits, y_batch)
+        loss.backward()
+
+        W1 = ndl.Tensor(W1.numpy() - lr * W1.grad.numpy())
+        W2 = ndl.Tensor(W2.numpy() - lr * W2.grad.numpy())
+
+    return W1, W2
 
 
 ### CODE BELOW IS FOR ILLUSTRATION, YOU DO NOT NEED TO EDIT
