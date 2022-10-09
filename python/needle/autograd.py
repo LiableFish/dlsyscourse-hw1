@@ -13,6 +13,7 @@ TENSOR_COUNTER = 0
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
 import numpy as array_api
+
 NDArray = numpy.ndarray
 
 
@@ -35,9 +36,11 @@ class CPUDevice(Device):
     def enabled(self):
         return True
 
+
 def cpu():
     """Return cpu device"""
     return CPUDevice()
+
 
 def all_devices():
     """return a list of all available devices"""
@@ -384,13 +387,17 @@ class Tensor(Value):
     __rmatmul__ = __matmul__
 
 
-def compute_gradient_of_variables(output_tensor, out_grad):
+def _is_const_node(node: Value):
+    return not node.inputs and not node.op
+
+
+def compute_gradient_of_variables(output_tensor: Tensor, out_grad: Tensor):
     """Take gradient of output node with respect to each node in node_list.
 
     Store the computed result in the grad field of each Variable.
     """
     # a map from node to a list of gradient contributions from each output node
-    node_to_output_grads_list: Dict[Tensor, List[Tensor]] = {}
+    node_to_output_grads_list: Dict[Tensor, List[Tensor]] = defaultdict(list)
     # Special note on initializing gradient of
     # We are really taking a derivative of the scalar reduce_sum(output_node)
     # instead of the vector output_node. But this is the common case for loss function.
@@ -399,9 +406,21 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    for node in reverse_topo_order:
+
+        # adjoint := d loss / d node
+        grad = sum_node_list(node_to_output_grads_list[node])
+        node.grad = grad
+
+        if _is_const_node(node):
+            continue
+
+        # partial_adjoint := adjoint * d node / d input
+        output_grads = node.op.gradient_as_tuple(out_grad=grad, node=node)
+
+        for input_node, output_grad in zip(node.inputs, output_grads):
+            node_to_output_grads_list[input_node].append(output_grad)
+
 
 class DFSMark(int, Enum):
     NOT_VISITED = 0

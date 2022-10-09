@@ -1,13 +1,44 @@
 import struct
 import gzip
+from typing import Optional, Tuple
+
 import numpy as np
 
 import sys
+
+
 sys.path.append('python/')
 import needle as ndl
 
 
-def parse_mnist(image_filesname, label_filename):
+def _min_max_scaler(
+    data: np.ndarray,
+    *,
+    max_range: float,
+    min_range: float,
+    axis: Optional[Tuple[int]] = None,
+):
+    """inspired by sklearn"""
+    std = (data - data.min(axis=axis)) / (data.max(axis=axis) - data.min(axis=axis))
+    return std * (max_range - min_range) + min_range
+
+
+def _read_mnist_images(image_filename: str) -> np.ndarray:
+    with gzip.open(image_filename, 'rb') as file:
+        _, number_of_images, number_of_rows, number_of_cols = struct.unpack(">4I", file.read(16))
+        data = np.frombuffer(file.read(), dtype=np.dtype(np.uint8).newbyteorder('>')).astype(np.float32)
+        data = data.reshape(number_of_images, number_of_rows * number_of_cols)
+        return _min_max_scaler(data, min_range=0, max_range=1)
+
+
+def _read_mnist_labels(label_filename: str) -> np.ndarray:
+    with gzip.open(label_filename, 'rb') as file:
+        file.read(8)  # skip magic number and number of labels
+        labels = np.frombuffer(file.read(), dtype=np.dtype(np.uint8).newbyteorder('>'))
+        return labels
+
+
+def parse_mnist(image_filename, label_filename):
     """ Read an images and labels file in MNIST format.  See this page:
     http://yann.lecun.com/exdb/mnist/ for a description of the file format.
 
@@ -23,18 +54,19 @@ def parse_mnist(image_filesname, label_filename):
                 dimension of the data, e.g., since MNIST images are 28x28, it
                 will be 784.  Values should be of type np.float32, and the data
                 should be normalized to have a minimum value of 0.0 and a
-                maximum value of 1.0.
+                maximum value of 1.0. The normalization should be applied uniformly
+                across the whole dataset, _not_ individual images.
 
-            y (numpy.ndarray[dypte=np.int8]): 1D numpy array containing the
-                labels of the examples.  Values should be of type np.int8 and
+            y (numpy.ndarray[dtype=np.uint8]): 1D numpy array containing the
+                labels of the examples.  Values should be of type np.uint8 and
                 for MNIST will contain the values 0-9.
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    ### BEGIN YOUR CODE
+    return _read_mnist_images(image_filename), _read_mnist_labels(label_filename)
+    ### END YOUR CODE
 
 
-def softmax_loss(Z, y_one_hot):
+def softmax_loss(Z: ndl.Tensor, y_one_hot: ndl.Tensor):
     """ Return softmax loss.  Note that for the purposes of this assignment,
     you don't need to worry about "nicely" scaling the numerical properties
     of the log-sum-exp computation, but can just compute this directly.
@@ -50,9 +82,10 @@ def softmax_loss(Z, y_one_hot):
     Returns:
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
-    ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
-    ### END YOUR SOLUTION
+    batch_size = Z.shape[0]
+    return ndl.ops.summation(
+        ndl.ops.log(ndl.ops.exp(Z).sum(axes=(1,))) - (Z * y_one_hot).sum(axes=(1,)),
+    ) / batch_size
 
 
 def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
