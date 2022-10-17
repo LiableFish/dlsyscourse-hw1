@@ -174,7 +174,9 @@ class BroadcastTo(TensorOp):
             return out_grad
 
         broadcast_axes = []
-        for i, (input_dim, required_dim) in enumerate(zip_longest(input_shape, self.shape)):
+        for i, (input_dim, required_dim) in enumerate(
+            reversed(list(zip_longest(input_shape[::-1], self.shape[::-1])))
+        ):
             if self._is_broadcast(input_dim, required_dim):
                 broadcast_axes.append(i)
 
