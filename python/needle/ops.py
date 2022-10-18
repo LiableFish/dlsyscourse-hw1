@@ -32,7 +32,7 @@ class AddScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray):
-        return a + self.scalar
+        return a + array_api.array(self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         return out_grad
@@ -60,7 +60,7 @@ class MulScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray):
-        return a * self.scalar
+        return a * array_api.array(self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         return (out_grad * self.scalar,)
@@ -77,7 +77,7 @@ class PowerScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray) -> NDArray:
-        return a ** self.scalar
+        return a ** array_api.array(self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         return self.scalar * (node.inputs[0] ** (self.scalar - 1)) * out_grad
@@ -107,7 +107,7 @@ class DivScalar(TensorOp):
         self.scalar = scalar
 
     def compute(self, a: NDArray):
-        return a / self.scalar
+        return a / array_api.array(self.scalar, dtype=a.dtype)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
         return out_grad / self.scalar
@@ -280,8 +280,10 @@ class ReLU(TensorOp):
         return array_api.maximum(a, 0)
 
     def gradient(self, out_grad: Tensor, node: Tensor):
-        return out_grad * Tensor.make_const(np.where(node.realize_cached_data() > 0, 1, 0))
-
+        return (
+            out_grad *
+            Tensor.make_const(np.where(node.realize_cached_data() > 0, 1, 0).astype('uint8'))
+        )
 
 def relu(a):
     return ReLU()(a)
